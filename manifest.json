@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "id": "kigojomo.mail-linear",
+  "name": "Mail to Linear",
+  "version": "0.1.0",
+  "author": "KigoJomo",
+  "license": "MIT",
+  "description": "A small top-bar control for the local Thunderbird to Linear bridge.",
+  "kinds": ["bar-widget"],
+  "entryPoints": {"barWidget": "Widget.qml"},
+  "barWidget": {
+    "displayName": "Mail to Linear",
+    "description": "Check dependencies and pause or resume inbox updates",
+    "category": "Productivity",
+    "allowMultiple": false,
+    "defaultSection": "right"
+  }
+}
