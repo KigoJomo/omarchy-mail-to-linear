@@ -36,6 +36,10 @@ def configure():
 
 def main():
     configure()
+    codex_path = shutil.which("codex")
+    if not codex_path:
+        raise SystemExit("Codex CLI not found on PATH. Install Codex before setting up Mail to Linear.")
+    service_path = f"{Path(codex_path).parent}:/usr/local/bin:/usr/bin"
     TARGET.mkdir(parents=True, exist_ok=True)
     for name in FILES:
         source, target = ROOT / name, TARGET / name
@@ -59,6 +63,7 @@ After=default.target
 
 [Service]
 Type=simple
+Environment=PATH={service_path}
 WorkingDirectory={TARGET}
 ExecStart=/usr/bin/python3 {TARGET / 'bridge.py'}
 Restart=always
