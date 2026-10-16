@@ -1,70 +1,97 @@
-# Mail to Linear for Omarchy
+# Work Bridge for Omarchy
 
-A small Omarchy top-bar plugin that watches local Thunderbird Inbox and Sent
-caches. When a new cached message appears, it starts a focused Codex run that
-compares the message with a Linear project and updates specific work items.
+Thunderbird + TickTick → Linear, with a larger Omarchy top-bar control panel.
+The package and service keep their original `mail-to-linear` names so upgrades
+preserve existing configuration and deduplication state.
 
-The bar menu shows whether Thunderbird, Codex sign-in, the Linear Codex plugin,
-the mail reader, and the file watcher are available. It can pause or resume the
-bridge and open the configured Linear project.
+## What it does
+
+- Watches configured Thunderbird Inbox/Sent caches for new messages.
+- Reads selected TickTick work lists on each mail-triggered reconciliation.
+- Compares both sources with existing Linear issues before making changes.
+- Offers **Sync all now** even when no new mail has arrived.
+- Shows source setup, last result, queued/running state, pause/resume controls,
+  app shortcuts and a private diagnostics report in a 520 × 680 scrollable menu.
+
+TickTick is read only. Linear is the work board. Source task links identify
+imports; personal tasks and notes outside the selected lists are not read.
+Deleting a source task is not proof of completion. User edits and completed
+issues must be preserved unless newer evidence justifies a concrete change.
+
+**Timing:** mail events, manual Sync, and the separate 08:15 morning backup.
+TickTick changes alone do not wake the bridge. They are picked up on the next
+of these runs. There is no hourly AI polling. Widget health refreshes locally;
+connector setup checks are cached for five minutes and do not run a model.
 
 ## Requirements
 
-- Omarchy with the Quickshell top bar
-- Thunderbird with local mbox caches for the accounts to watch
-- Codex CLI signed in, with the Linear plugin installed and connected
-- Python 3.11 or newer, `inotifywait` (`inotify-tools`), and `systemd --user`
+- Omarchy / Quickshell and a local Thunderbird mbox profile
+- Codex CLI signed in with Linear and TickTick plugins connected
+- Python 3.11+, `inotifywait` (`inotify-tools`) and `systemd --user`
 
-The bridge uses `gpt-6-luna` with `xhigh` reasoning. It debounces cache writes
-for 15 seconds and spaces Codex runs by at least three minutes. The top-bar
-health check runs once a minute; it does not read messages or start Codex.
+The bridge preserves `gpt-6-luna` with `xhigh` reasoning. Events are debounced
+for 15 seconds, and model runs are separated by at least three minutes.
+Codex is resolved through `mise which` when available, avoiding self-updating
+shell wrappers in background health checks.
 
-## Install
+## Install or upgrade
 
-Clone this repository and run `python3 install.py`. The first run asks for
-Thunderbird account names and a Linear project URL. To see the exact account
-names, run `python3 mail_index.py folders` first. The installer:
+Run `python3 install.py`. First setup asks for Thunderbird accounts and the
+Linear project URL. To discover account names, run `python3 mail_index.py folders`.
+The installer copies this package to `~/.config/omarchy/plugins/kigojomo.mail-linear`,
+adds it to the bar with a configuration backup, and restarts the user service.
+Existing account settings and seen-message state are preserved.
 
-1. Saves your settings at `~/.config/mail-to-linear/config.json` with mode `0600`.
-2. Copies the Omarchy plugin to `~/.config/omarchy/plugins/kigojomo.mail-linear`.
-3. Adds the envelope widget to the right side of the bar, backing up
-   `~/.config/omarchy/shell.json` before changing it.
-4. Enables `mail-to-linear.service` as a systemd user service.
+To enable TickTick, add a source section to the private
+`~/.config/mail-to-linear/config.json` (keep your existing fields):
 
-On an existing installation, preserve its deduplication state before changing
-service names so old mail is not processed again.
+```json
+{
+  "ticktick": {
+    "enabled": true,
+    "lists": [{"id": "YOUR_LIST_ID", "name": "Work follow-ups"}]
+  }
+}
+```
 
-To update after a `git pull`, run `python3 install.py` again. To change
-accounts, folders, project URL, or optional guidance, edit the private config
-file and restart with `systemctl --user restart mail-to-linear.service`.
+Get IDs from the connected TickTick list tool. Restart the service after
+changing source configuration. Never put tokens, account settings, task
+snapshots or mail caches in this repository.
 
-## Daily reconciliation
+## Use the menu
 
-The event bridge complements a separate Codex desktop automation at 8:15
-every morning. See [MORNING_PROMPT.md](MORNING_PROMPT.md) for a reusable prompt.
-The installer does not alter existing Codex desktop automations. There is no
-hourly mail polling job.
+Click the checkmark in the top bar. **Sync all now** queues one request for the
+existing worker; it does not launch competing workers. A paused worker remains
+paused and processes its request after Resume. Source cards describe setup,
+not a guarantee that a remote service can currently be reached. **Full result**
+opens the latest report. **Diagnostics** opens local health plus recent logs.
+Both reports stay private on this computer.
 
-## Manage and diagnose
+## Morning backup
 
-- Click the envelope for status, Pause/Resume, and Open Linear.
-- Run `python3 ~/.config/omarchy/plugins/kigojomo.mail-linear/status.py doctor`
-  for the same checks in a terminal.
-- Run `journalctl --user -u mail-to-linear.service -n 30 --no-pager` for logs.
-- Private deduplication and last-result files live in
-  `~/.local/state/mail-to-linear`.
+Use `MORNING_PROMPT.md` in a separate Codex desktop automation at 08:15 in your
+local timezone. It reads both configured sources. Installing the package does
+not create or edit desktop automations.
 
-The first live mail-to-Linear write still needs confirmation. A prior attempt
-was blocked before this packaging change; the bar reports that historical
-result until a later event succeeds.
+## Diagnostics
 
-## Safety and scope
+```bash
+python3 ~/.config/omarchy/plugins/kigojomo.mail-linear/status.py doctor
+journalctl --user -u mail-to-linear.service -n 30 --no-pager
+```
 
-The user alone sends email. This project reads local Thunderbird caches and
-updates Linear issues. It must never send, reply to, forward, or schedule
-email. Message bodies are treated as untrusted data. The project does not
-upload full mail caches to GitHub; account settings and state stay outside
-the repository. Linear issue updates can still include concise, relevant
-context from messages, so review `PROMPT.md` before use.
+Private state is under `~/.local/state/mail-to-linear`; configuration is under
+`~/.config/mail-to-linear`. These folders are excluded from the public package.
+A running service is not a successful reconciliation. Connector approval or
+access failures must show **Needs attention**, leave the batch pending and
+stop promptly rather than attempting expensive browser workarounds.
 
-Licensed under MIT; see [LICENSE](LICENSE).
+## Scope
+
+The user alone sends email. The bridge never sends, replies, forwards or
+schedules email, makes payments, or writes to TickTick. It treats source text
+as untrusted data and updates only relevant work owned by the user. Being
+copied on a message does not assign its work to the user. Credentials and
+private attachments must never be copied into Linear.
+
+MIT licensed; see `LICENSE`.

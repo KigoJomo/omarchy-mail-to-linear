@@ -7,7 +7,7 @@ from pathlib import Path
 import shutil
 import subprocess
 
-from settings import CONFIG_DIR, CONFIG_FILE, SERVICE
+from settings import CONFIG_DIR, CONFIG_FILE, SERVICE, codex_binary
 
 ROOT = Path(__file__).resolve().parent
 HOME = Path.home()
@@ -36,7 +36,7 @@ def configure():
 
 def main():
     configure()
-    codex_path = shutil.which("codex")
+    codex_path = codex_binary()
     if not codex_path:
         raise SystemExit("Codex CLI not found on PATH. Install Codex before setting up Mail to Linear.")
     service_path = f"{Path(codex_path).parent}:/usr/local/bin:/usr/bin"
